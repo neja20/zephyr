@@ -10,6 +10,7 @@ import random
 import logging
 import shutil
 import glob
+import csv
 
 from twisterlib.testsuite import TestCase, TestSuite
 from twisterlib.platform import Platform
@@ -72,6 +73,22 @@ class TestInstance:
         self.init_cases()
         self.filters = []
         self.filter_type = None
+
+    def record(self, recording, fname_csv="recording.csv"):
+        if recording:
+            if self.recording is None:
+                self.recording = recording.copy()
+            else:
+                self.recording.extend(recording)
+
+            filename = os.path.join(self.build_dir, fname_csv)
+            with open(filename, "wt") as csvfile:
+                cw = csv.DictWriter(csvfile,
+                                    fieldnames = self.recording[0].keys(),
+                                    lineterminator = os.linesep,
+                                    quoting = csv.QUOTE_NONNUMERIC)
+                cw.writeheader()
+                cw.writerows(self.recording)
 
     def add_filter(self, reason, filter_type):
         self.filters.append({'type': filter_type, 'reason': reason })
@@ -163,7 +180,7 @@ class TestInstance:
             # command-line, then we need to run the test, not just build it.
             fixture = testsuite.harness_config.get('fixture')
             if fixture:
-                can_run = fixture in fixtures
+                can_run = fixture in map(lambda f: f.split(sep=':')[0], fixtures)
 
         return can_run
 
@@ -181,11 +198,10 @@ class TestInstance:
             if self.platform.simulation == "qemu":
                 if os.name != "nt":
                     handler = QEMUHandler(self, "qemu")
-                    handler.args.append(f"QEMU_PIPE={handler.get_fifo()}")
-                    handler.ready = True
                 else:
                     handler = QEMUWinHandler(self, "qemu")
-                    handler.ready = True
+                handler.args.append(f"QEMU_PIPE={handler.get_fifo()}")
+                handler.ready = True
             else:
                 handler = SimulationHandler(self, self.platform.simulation)
 
@@ -202,7 +218,6 @@ class TestInstance:
         if handler:
             handler.options = options
             handler.generator_cmd = env.generator_cmd
-            handler.generator = env.generator
             handler.suite_name_check = not options.disable_suite_name_check
         self.handler = handler
 
@@ -215,7 +230,7 @@ class TestInstance:
                 return False
 
             # check presence of QEMU on Windows
-            if 'QEMU_BIN_PATH' not in os.environ:
+            if self.platform.simulation == 'qemu' and 'QEMU_BIN_PATH' not in os.environ:
                 return False
 
         # we asked for build-only on the command line

@@ -220,7 +220,7 @@ static size_t metadata_model_size(const struct bt_mesh_model *mod,
 
 	size += sizeof(uint8_t);
 
-	for (entry = *mod->metadata; entry && entry->len; ++entry) {
+	for (entry = mod->metadata; entry && entry->len; ++entry) {
 		size += sizeof(entry->len) + sizeof(entry->id) + entry->len;
 	}
 
@@ -286,7 +286,7 @@ static int metadata_add_model(const struct bt_mesh_model *mod,
 	count_ptr = data_buf_add_u8_offset(buf, 0, offset);
 
 	if (mod->metadata) {
-		for (entry = *mod->metadata; entry && entry->data != NULL; ++entry) {
+		for (entry = mod->metadata; entry && entry->data != NULL; ++entry) {
 			data_buf_add_le16_offset(buf, entry->len, offset);
 			data_buf_add_le16_offset(buf, entry->id, offset);
 			data_buf_add_mem_offset(buf, entry->data, entry->len, offset);
@@ -1487,12 +1487,13 @@ static int element_model_recv(struct bt_mesh_msg_ctx *ctx, struct net_buf_simple
 	}
 
 	if (!bt_mesh_model_has_key(model, ctx->app_idx)) {
-		LOG_ERR("Wrong key");
+		LOG_DBG("Model at 0x%04x is not bound to app idx %d", elem->rt->addr, ctx->app_idx);
 		return ACCESS_STATUS_WRONG_KEY;
 	}
 
 	if (!model_has_dst(model, ctx->recv_dst, ctx->uuid)) {
-		LOG_ERR("Invalid address 0x%02x", ctx->recv_dst);
+		LOG_DBG("Dst addr 0x%02x is invalid for model at 0x%04x", ctx->recv_dst,
+			elem->rt->addr);
 		return ACCESS_STATUS_INVALID_ADDRESS;
 	}
 
@@ -1545,22 +1546,42 @@ int bt_mesh_model_recv(struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf)
 
 		if (index >= dev_comp->elem_count) {
 			LOG_ERR("Invalid address 0x%02x", ctx->recv_dst);
-			err = ACCESS_STATUS_INVALID_ADDRESS;
+			return ACCESS_STATUS_INVALID_ADDRESS;
 		} else {
 			const struct bt_mesh_elem *elem = &dev_comp->elem[index];
 
 			err = element_model_recv(ctx, buf, elem, opcode);
 		}
 	} else {
+		err = ACCESS_STATUS_MESSAGE_NOT_UNDERSTOOD;
 		for (index = 0; index < dev_comp->elem_count; index++) {
 			const struct bt_mesh_elem *elem = &dev_comp->elem[index];
+			int err_elem;
 
-			(void)element_model_recv(ctx, buf, elem, opcode);
+			err_elem = element_model_recv(ctx, buf, elem, opcode);
+			err = err_elem == ACCESS_STATUS_SUCCESS ? err_elem : err;
 		}
 	}
 
 	if (IS_ENABLED(CONFIG_BT_MESH_ACCESS_LAYER_MSG) && msg_cb) {
 		msg_cb(opcode, ctx, buf);
+	}
+
+	return err;
+}
+
+int bt_mesh_access_recv(struct bt_mesh_msg_ctx *ctx, struct net_buf_simple *buf)
+{
+	int err;
+
+	err = bt_mesh_model_recv(ctx, buf);
+
+	if (IS_ENABLED(CONFIG_BT_MESH_ACCESS_LAYER_MSG) && msg_cb) {
+		/* Mesh assumes that the application has processed the message.
+		 * Access layer returns success to trigger RPL update and prevent
+		 * replay attack over application.
+		 */
+		err = 0;
 	}
 
 	return err;

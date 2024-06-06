@@ -36,6 +36,19 @@ char *net_sprint_addr(sa_family_t af, const void *addr)
 	return net_addr_ntop(af, addr, s, NET_IPV6_ADDR_LEN);
 }
 
+const char *net_verdict2str(enum net_verdict verdict)
+{
+	if (verdict == NET_OK) {
+		return "NET_OK";
+	} else if (verdict == NET_CONTINUE) {
+		return "NET_CONTINUE";
+	} else if (verdict == NET_DROP) {
+		return "NET_DROP";
+	}
+
+	return "<unknown>";
+}
+
 const char *net_proto2str(int family, int proto)
 {
 	if (family == AF_INET || family == AF_INET6) {
@@ -327,7 +340,7 @@ char *z_vrfy_net_addr_ntop(sa_family_t family, const void *src,
 
 	return dst;
 }
-#include <syscalls/net_addr_ntop_mrsh.c>
+#include <zephyr/syscalls/net_addr_ntop_mrsh.c>
 #endif /* CONFIG_USERSPACE */
 
 int z_impl_net_addr_pton(sa_family_t family, const char *src,
@@ -499,7 +512,7 @@ int z_vrfy_net_addr_pton(sa_family_t family, const char *src,
 
 	return 0;
 }
-#include <syscalls/net_addr_pton_mrsh.c>
+#include <zephyr/syscalls/net_addr_pton_mrsh.c>
 #endif /* CONFIG_USERSPACE */
 
 

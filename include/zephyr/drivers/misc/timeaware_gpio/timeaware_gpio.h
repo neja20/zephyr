@@ -14,6 +14,8 @@
 /**
  * @brief Time-aware GPIO Interface
  * @defgroup tgpio_interface Time-aware GPIO Interface
+ * @since 3.5
+ * @version 0.1.0
  * @ingroup io_interfaces
  * @{
  */
@@ -188,6 +190,6 @@ static inline int z_impl_tgpio_pin_read_ts_ec(const struct device *dev, uint32_t
 }
 #endif
 
-#include <syscalls/timeaware_gpio.h>
+#include <zephyr/syscalls/timeaware_gpio.h>
 
 #endif /* ZEPHYR_DRIVERS_MISC_TIMEAWARE_GPIO_TIMEAWARE_GPIO */

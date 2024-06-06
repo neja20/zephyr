@@ -70,6 +70,8 @@
 
 #define TEST_CAN_CTRL_0 DT_NODELABEL(test_can0)
 #define TEST_CAN_CTRL_1 DT_NODELABEL(test_can1)
+#define TEST_CAN_CTRL_2 DT_NODELABEL(test_can2)
+#define TEST_CAN_CTRL_3 DT_NODELABEL(test_can3)
 
 #define TEST_DMA_CTLR_1 DT_NODELABEL(test_dma1)
 #define TEST_DMA_CTLR_2 DT_NODELABEL(test_dma2)
@@ -188,6 +190,25 @@ ZTEST(devicetree_api, test_any_inst_prop)
 	zassert_equal(DT_ANY_INST_HAS_PROP_STATUS_OKAY(bar), 1, "");
 	zassert_equal(DT_ANY_INST_HAS_PROP_STATUS_OKAY(baz), 0, "");
 	zassert_equal(DT_ANY_INST_HAS_PROP_STATUS_OKAY(does_not_exist), 0, "");
+
+	zassert_equal(COND_CODE_1(DT_ANY_INST_HAS_PROP_STATUS_OKAY(foo),
+				  (5), (6)),
+		      5, "");
+	zassert_equal(COND_CODE_0(DT_ANY_INST_HAS_PROP_STATUS_OKAY(foo),
+				  (5), (6)),
+		      6, "");
+	zassert_equal(COND_CODE_1(DT_ANY_INST_HAS_PROP_STATUS_OKAY(baz),
+				  (5), (6)),
+		      6, "");
+	zassert_equal(COND_CODE_0(DT_ANY_INST_HAS_PROP_STATUS_OKAY(baz),
+				  (5), (6)),
+		      5, "");
+	zassert_true(IS_ENABLED(DT_ANY_INST_HAS_PROP_STATUS_OKAY(foo)), "");
+	zassert_true(!IS_ENABLED(DT_ANY_INST_HAS_PROP_STATUS_OKAY(baz)), "");
+	zassert_equal(IF_ENABLED(DT_ANY_INST_HAS_PROP_STATUS_OKAY(foo), (1)) + 1,
+		      2, "");
+	zassert_equal(IF_ENABLED(DT_ANY_INST_HAS_PROP_STATUS_OKAY(baz), (1)) + 1,
+		      1, "");
 }
 
 ZTEST(devicetree_api, test_default_prop_access)
@@ -298,6 +319,10 @@ ZTEST(devicetree_api, test_has_compat)
 		   (TA_HAS_COMPAT(vnd_undefined_compat) << 1) |
 		   (TA_HAS_COMPAT(vnd_not_a_test_array_compat) << 2));
 	zassert_equal(compats, 0x3, "");
+
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT vnd_model1
+	zassert_true(DT_INST_NODE_HAS_COMPAT(0, zephyr_model2));
 }
 
 ZTEST(devicetree_api, test_has_status)
@@ -1326,21 +1351,61 @@ ZTEST(devicetree_api, test_pwms)
 #define DT_DRV_COMPAT vnd_can_controller
 ZTEST(devicetree_api, test_can)
 {
+	/* DT_CAN_TRANSCEIVER_MIN_BITRATE */
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_0, 0), 10000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_0, 10000), 10000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_0, 20000), 20000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_1, 0), 50000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_1, 50000), 50000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_1, 100000), 100000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_2, 0), 0, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_2, 10000), 10000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_2, 20000), 20000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_3, 0), 0, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_3, 30000), 30000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MIN_BITRATE(TEST_CAN_CTRL_3, 40000), 40000, "");
+
+	/* DT_INST_CAN_TRANSCEIVER_MIN_BITRATE */
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(0, 0), 10000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(0, 10000), 10000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(0, 20000), 20000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(1, 0), 50000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(1, 50000), 50000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(1, 100000), 100000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(2, 0), 0, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(2, 10000), 10000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(2, 20000), 20000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(3, 0), 0, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(3, 30000), 30000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MIN_BITRATE(3, 40000), 40000, "");
+
 	/* DT_CAN_TRANSCEIVER_MAX_BITRATE */
 	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_0, 1000000), 1000000, "");
 	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_0, 5000000), 5000000, "");
 	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_0, 8000000), 5000000, "");
-	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_1, 1250000), 1250000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_1, 125000), 125000, "");
 	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_1, 2000000), 2000000, "");
 	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_1, 5000000), 2000000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_2, 125000), 125000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_2, 1000000), 1000000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_2, 5000000), 1000000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_3, 125000), 125000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_3, 1000000), 1000000, "");
+	zassert_equal(DT_CAN_TRANSCEIVER_MAX_BITRATE(TEST_CAN_CTRL_3, 5000000), 1000000, "");
 
 	/* DT_INST_CAN_TRANSCEIVER_MAX_BITRATE */
 	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(0, 1000000), 1000000, "");
 	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(0, 5000000), 5000000, "");
 	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(0, 8000000), 5000000, "");
-	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(1, 1250000), 1250000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(1, 125000), 125000, "");
 	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(1, 2000000), 2000000, "");
 	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(1, 5000000), 2000000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(2, 125000), 125000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(2, 1000000), 1000000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(2, 5000000), 1000000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(3, 125000), 125000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(3, 1000000), 1000000, "");
+	zassert_equal(DT_INST_CAN_TRANSCEIVER_MAX_BITRATE(3, 5000000), 1000000, "");
 }
 
 ZTEST(devicetree_api, test_macro_names)
@@ -2147,6 +2212,16 @@ ZTEST(devicetree_api, test_child_nodes_list_varg)
 	#undef TEST_PARENT
 	#undef TEST_FUNC_AND_COMMA
 	#undef TEST_FUNC
+}
+
+#undef DT_DRV_COMPAT
+#define DT_DRV_COMPAT vnd_child_bindings
+ZTEST(devicetree_api, test_child_nodes_number)
+{
+	zassert_equal(DT_CHILD_NUM(TEST_CHILDREN), 3, "");
+	zassert_equal(DT_INST_CHILD_NUM(0), 3, "");
+	zassert_equal(DT_CHILD_NUM_STATUS_OKAY(TEST_CHILDREN), 2, "");
+	zassert_equal(DT_INST_CHILD_NUM_STATUS_OKAY(0), 2, "");
 }
 
 ZTEST(devicetree_api, test_great_grandchild)

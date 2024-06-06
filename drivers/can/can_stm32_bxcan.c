@@ -632,15 +632,15 @@ static int can_stm32_init(const struct device *dev)
 		return ret;
 	}
 
-	ret = can_stm32_leave_sleep_mode(can);
-	if (ret) {
-		LOG_ERR("Failed to exit sleep mode");
-		return ret;
-	}
-
 	ret = can_stm32_enter_init_mode(can);
 	if (ret) {
 		LOG_ERR("Failed to enter init mode");
+		return ret;
+	}
+
+	ret = can_stm32_leave_sleep_mode(can);
+	if (ret) {
+		LOG_ERR("Failed to exit sleep mode");
 		return ret;
 	}
 
@@ -659,7 +659,7 @@ static int can_stm32_init(const struct device *dev)
 	/* Enable automatic bus-off recovery */
 	can->MCR |= CAN_MCR_ABOM;
 
-	ret = can_calc_timing(dev, &timing, cfg->common.bus_speed,
+	ret = can_calc_timing(dev, &timing, cfg->common.bitrate,
 			      cfg->common.sample_point);
 	if (ret == -EINVAL) {
 		LOG_ERR("Can't find timing for given param");
@@ -761,7 +761,7 @@ static int can_stm32_send(const struct device *dev, const struct can_frame *fram
 	const struct can_stm32_config *cfg = dev->config;
 	struct can_stm32_data *data = dev->data;
 	CAN_TypeDef *can = cfg->can;
-	uint32_t transmit_status_register = can->TSR;
+	uint32_t transmit_status_register = 0;
 	CAN_TxMailBox_TypeDef *mailbox = NULL;
 	struct can_stm32_mailbox *mb = NULL;
 
@@ -773,9 +773,6 @@ static int can_stm32_send(const struct device *dev, const struct can_frame *fram
 		    , frame->id
 		    , (frame->flags & CAN_FRAME_IDE) != 0 ? "extended" : "standard"
 		    , (frame->flags & CAN_FRAME_RTR) != 0 ? "yes" : "no");
-
-	__ASSERT_NO_MSG(callback != NULL);
-	__ASSERT(frame->dlc == 0U || frame->data != NULL, "Dataptr is null");
 
 	if (frame->dlc > CAN_MAX_DLC) {
 		LOG_ERR("DLC of %d exceeds maximum (%d)", frame->dlc, CAN_MAX_DLC);
@@ -796,6 +793,7 @@ static int can_stm32_send(const struct device *dev, const struct can_frame *fram
 	}
 
 	k_mutex_lock(&data->inst_mutex, K_FOREVER);
+	transmit_status_register = can->TSR;
 	while (!(transmit_status_register & CAN_TSR_TME)) {
 		k_mutex_unlock(&data->inst_mutex);
 		LOG_DBG("Transmit buffer full");
@@ -1139,7 +1137,7 @@ static void config_can_##inst##_irq(CAN_TypeDef *can)                \
 #define CAN_STM32_CONFIG_INST(inst)                                      \
 PINCTRL_DT_INST_DEFINE(inst);                                            \
 static const struct can_stm32_config can_stm32_cfg_##inst = {            \
-	.common = CAN_DT_DRIVER_CONFIG_INST_GET(inst, 1000000),          \
+	.common = CAN_DT_DRIVER_CONFIG_INST_GET(inst, 0, 1000000),       \
 	.can = (CAN_TypeDef *)DT_INST_REG_ADDR(inst),                    \
 	.master_can = (CAN_TypeDef *)DT_INST_PROP_OR(inst,               \
 		master_can_reg, DT_INST_REG_ADDR(inst)),                 \

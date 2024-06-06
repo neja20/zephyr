@@ -25,7 +25,7 @@ struct mipi_dbi_spi_config {
 struct mipi_dbi_spi_data {
 	/* Used for 3 wire mode */
 	uint16_t spi_byte;
-	struct k_spinlock lock;
+	struct k_mutex lock;
 };
 
 /* Expands to 1 if the node does not have the `write-only` property */
@@ -58,25 +58,29 @@ static int mipi_dbi_spi_write_helper(const struct device *dev,
 		.count = 1,
 	};
 	int ret = 0;
-	k_spinlock_key_t spinlock_key = k_spin_lock(&data->lock);
+
+	ret = k_mutex_lock(&data->lock, K_FOREVER);
+	if (ret < 0) {
+		return ret;
+	}
 
 	if (dbi_config->mode == MIPI_DBI_MODE_SPI_3WIRE &&
 	    IS_ENABLED(CONFIG_MIPI_DBI_SPI_3WIRE)) {
-		struct spi_config tmp_cfg;
-		/* We have to emulate 3 wire mode by packing the data/command
-		 * bit into the upper bit of the SPI transfer.
-		 * switch SPI to 9 bit mode, and write the transfer
+		/* 9 bit word mode must be used, as the command/data bit
+		 * is stored before the data word.
 		 */
-		memcpy(&tmp_cfg, &dbi_config->config, sizeof(tmp_cfg));
-		tmp_cfg.operation &= ~SPI_WORD_SIZE_MASK;
-		tmp_cfg.operation |= SPI_WORD_SET(9);
+		if ((dbi_config->config.operation & SPI_WORD_SIZE_MASK)
+		    != SPI_WORD_SET(9)) {
+			return -ENOTSUP;
+		}
 		buffer.buf = &data->spi_byte;
-		buffer.len = 1;
+		buffer.len = 2;
 
 		/* Send command */
 		if (cmd_present) {
 			data->spi_byte = cmd;
-			ret = spi_write(config->spi_dev, &tmp_cfg, &buf_set);
+			ret = spi_write(config->spi_dev, &dbi_config->config,
+					&buf_set);
 			if (ret < 0) {
 				goto out;
 			}
@@ -84,7 +88,8 @@ static int mipi_dbi_spi_write_helper(const struct device *dev,
 		/* Write data, byte by byte */
 		for (size_t i = 0; i < len; i++) {
 			data->spi_byte = MIPI_DBI_DC_BIT | data_buf[i];
-			ret = spi_write(config->spi_dev, &tmp_cfg, &buf_set);
+			ret = spi_write(config->spi_dev, &dbi_config->config,
+					&buf_set);
 			if (ret < 0) {
 				goto out;
 			}
@@ -124,7 +129,7 @@ static int mipi_dbi_spi_write_helper(const struct device *dev,
 		ret = -ENOTSUP;
 	}
 out:
-	k_spin_unlock(&data->lock, spinlock_key);
+	k_mutex_unlock(&data->lock);
 	return ret;
 }
 
@@ -164,9 +169,12 @@ static int mipi_dbi_spi_command_read(const struct device *dev,
 		.count = 1,
 	};
 	int ret = 0;
-	k_spinlock_key_t spinlock_key = k_spin_lock(&data->lock);
 	struct spi_config tmp_config;
 
+	ret = k_mutex_lock(&data->lock, K_FOREVER);
+	if (ret < 0) {
+		return ret;
+	}
 	memcpy(&tmp_config, &dbi_config->config, sizeof(tmp_config));
 	if (dbi_config->mode == MIPI_DBI_MODE_SPI_3WIRE &&
 	    IS_ENABLED(CONFIG_MIPI_DBI_SPI_3WIRE)) {
@@ -231,7 +239,7 @@ static int mipi_dbi_spi_command_read(const struct device *dev,
 	}
 out:
 	spi_release(config->spi_dev, &tmp_config);
-	k_spin_unlock(&data->lock, spinlock_key);
+	k_mutex_unlock(&data->lock);
 	return ret;
 }
 
@@ -259,9 +267,18 @@ static int mipi_dbi_spi_reset(const struct device *dev, uint32_t delay)
 	return gpio_pin_set_dt(&config->reset, 0);
 }
 
+static int mipi_dbi_spi_release(const struct device *dev,
+				const struct mipi_dbi_config *dbi_config)
+{
+	const struct mipi_dbi_spi_config *config = dev->config;
+
+	return spi_release(config->spi_dev, &dbi_config->config);
+}
+
 static int mipi_dbi_spi_init(const struct device *dev)
 {
 	const struct mipi_dbi_spi_config *config = dev->config;
+	struct mipi_dbi_spi_data *data = dev->data;
 	int ret;
 
 	if (!device_is_ready(config->spi_dev)) {
@@ -291,6 +308,8 @@ static int mipi_dbi_spi_init(const struct device *dev)
 		}
 	}
 
+	k_mutex_init(&data->lock);
+
 	return 0;
 }
 
@@ -298,6 +317,7 @@ static struct mipi_dbi_driver_api mipi_dbi_spi_driver_api = {
 	.reset = mipi_dbi_spi_reset,
 	.command_write = mipi_dbi_spi_command_write,
 	.write_display = mipi_dbi_spi_write_display,
+	.release = mipi_dbi_spi_release,
 #if MIPI_DBI_SPI_READ_REQUIRED
 	.command_read = mipi_dbi_spi_command_read,
 #endif

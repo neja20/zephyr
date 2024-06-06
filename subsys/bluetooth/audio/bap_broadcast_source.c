@@ -6,21 +6,36 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <zephyr/kernel.h>
-#include <zephyr/sys/byteorder.h>
-#include <zephyr/sys/check.h>
+#include <errno.h>
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 
+#include <zephyr/autoconf.h>
 #include <zephyr/bluetooth/bluetooth.h>
 #include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/crypto.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/audio/audio.h>
 #include <zephyr/bluetooth/audio/bap.h>
-
+#include <zephyr/bluetooth/hci_types.h>
+#include <zephyr/bluetooth/iso.h>
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/net/buf.h>
+#include <zephyr/sys/byteorder.h>
+#include <zephyr/sys/check.h>
+#include <zephyr/sys/slist.h>
+#include <zephyr/sys/util.h>
+#include <zephyr/sys/util_macro.h>
+
 LOG_MODULE_REGISTER(bt_bap_broadcast_source, CONFIG_BT_BAP_BROADCAST_SOURCE_LOG_LEVEL);
 
 #include "bap_iso.h"
 #include "bap_endpoint.h"
+#include "bap_stream.h"
 
 struct bt_bap_broadcast_subgroup {
 	/* The streams used to create the broadcast source */
@@ -594,7 +609,8 @@ static bool valid_broadcast_source_param(const struct bt_bap_broadcast_source_pa
 				return false;
 			}
 
-			CHECKIF(subgroup_param->codec_cfg->id == BT_HCI_CODING_FORMAT_LC3 &&
+			CHECKIF(stream_param->data != NULL &&
+				subgroup_param->codec_cfg->id == BT_HCI_CODING_FORMAT_LC3 &&
 				!bt_audio_valid_ltv(stream_param->data, stream_param->data_len)) {
 				LOG_DBG("subgroup_params[%zu].stream_params[%zu]->data not valid "
 					"LTV",

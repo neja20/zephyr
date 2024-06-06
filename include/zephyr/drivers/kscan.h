@@ -28,6 +28,8 @@ extern "C" {
 /**
  * @brief KSCAN APIs
  * @defgroup kscan_interface Keyboard Scan Driver APIs
+ * @since 2.1
+ * @version 1.0.0
  * @ingroup io_interfaces
  * @{
  */
@@ -137,6 +139,6 @@ static inline int z_impl_kscan_disable_callback(const struct device *dev)
  * @}
  */
 
-#include <syscalls/kscan.h>
+#include <zephyr/syscalls/kscan.h>
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_KB_SCAN_H_ */

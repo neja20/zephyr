@@ -6,7 +6,7 @@
  */
 
 #include <zephyr/devicetree.h>
-#include <offsets.h>
+#include <zephyr/offsets.h>
 #include <zephyr/linker/linker-defs.h>
 #include <zephyr/linker/linker-tool.h>
 #include <zephyr/sys/util.h>
@@ -165,8 +165,8 @@ MEMORY
 	*intc_loapic.c.obj(.##lsect##.*)				\
 	*intc_system_apic.c.obj(.##lsect)				\
 	*intc_system_apic.c.obj(.##lsect##.*)				\
-	*rand32_timer.c.obj(.##lsect)					\
-	*rand32_timer.c.obj(.##lsect##.*)				\
+	*random_timer.c.obj(.##lsect)					\
+	*random_timer.c.obj(.##lsect##.*)				\
 	*uart_console.c.obj(.##lsect)					\
 	*uart_console.c.obj(.##lsect##.*)
 
@@ -253,6 +253,10 @@ SECTIONS
 	{
 
 #include <zephyr/linker/rel-sections.ld>
+
+#ifdef CONFIG_LLEXT
+#include <zephyr/linker/llext-sections.ld>
+#endif
 
     /DISCARD/ :
 	{

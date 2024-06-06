@@ -31,7 +31,7 @@ def test_runner_imports():
                     'mdb-nsim',
                     'mdb-hw',
                     'misc-flasher',
-                    'native_gdb',
+                    'native',
                     'nios2',
                     'nrfjprog',
                     'nrfutil',
@@ -39,11 +39,14 @@ def test_runner_imports():
                     'openocd',
                     'pyocd',
                     'qemu',
+                    'renode',
+                    'renode-robot',
                     'silabs_commander',
                     'spi_burn',
                     'stm32cubeprogrammer',
                     'stm32flash',
                     'trace32',
+                    'teensy',
                     'uf2',
                     'xtensa'))
     assert runner_names == expected

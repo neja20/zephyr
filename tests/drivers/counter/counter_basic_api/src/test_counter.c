@@ -57,6 +57,9 @@ static const struct device *const devices[] = {
 	DEVS_FOR_DT_COMPAT(microchip_xec_timer)
 	DEVS_FOR_DT_COMPAT(nxp_imx_epit)
 	DEVS_FOR_DT_COMPAT(nxp_imx_gpt)
+#ifdef CONFIG_COUNTER_MCUX_TPM
+	DEVS_FOR_DT_COMPAT(nxp_tpm_timer)
+#endif
 	DEVS_FOR_DT_COMPAT(renesas_smartbond_timer)
 #ifdef CONFIG_COUNTER_MCUX_CTIMER
 	DEVS_FOR_DT_COMPAT(nxp_lpc_ctimer)
@@ -93,6 +96,9 @@ static const struct device *const devices[] = {
 #endif
 #ifdef CONFIG_COUNTER_TMR_ESP32
 	DEVS_FOR_DT_COMPAT(espressif_esp32_timer)
+#endif
+#ifdef CONFIG_COUNTER_TMR_RTC_ESP32
+	DEVS_FOR_DT_COMPAT(espressif_esp32_rtc_timer)
 #endif
 #ifdef CONFIG_COUNTER_NXP_S32_SYS_TIMER
 	DEVS_FOR_DT_COMPAT(nxp_s32_sys_timer)
@@ -181,6 +187,7 @@ static void test_all_instances(counter_test_func_t func,
 			func(devices[i]);
 		} else {
 			TC_PRINT("Skipped for %s\n", devices[i]->name);
+			ztest_test_skip();
 		}
 		counter_tear_down_instance(devices[i]);
 		/* Allow logs to be printed. */
@@ -955,6 +962,11 @@ static bool reliable_cancel_capable(const struct device *dev)
 	}
 #endif
 #ifdef CONFIG_COUNTER_NATIVE_POSIX
+	if (dev == DEVICE_DT_GET(DT_NODELABEL(counter0))) {
+		return true;
+	}
+#endif
+#ifdef CONFIG_COUNTER_AMBIQ
 	if (dev == DEVICE_DT_GET(DT_NODELABEL(counter0))) {
 		return true;
 	}

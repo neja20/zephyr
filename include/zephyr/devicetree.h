@@ -16,7 +16,7 @@
 #ifndef DEVICETREE_H
 #define DEVICETREE_H
 
-#include <devicetree_generated.h>
+#include <zephyr/devicetree_generated.h>
 #include <zephyr/irq_multilevel.h>
 
 #if !defined(_LINKER) && !defined(_ASMLANGUAGE)
@@ -28,6 +28,8 @@
 /**
  * @brief devicetree.h API
  * @defgroup devicetree Devicetree
+ * @since 2.2
+ * @version 1.0.0
  * @{
  * @}
  */
@@ -548,6 +550,25 @@
  * @return the node's index in its parent node's list of children
  */
 #define DT_NODE_CHILD_IDX(node_id) DT_CAT(node_id, _CHILD_IDX)
+
+/**
+ * @brief Get the number of child nodes of a given node
+ *
+ * @param node_id a node identifier
+ * @return Number of child nodes
+ */
+#define DT_CHILD_NUM(node_id) DT_CAT(node_id, _CHILD_NUM)
+
+
+/**
+ * @brief Get the number of child nodes of a given node
+ *        which child nodes' status are okay
+ *
+ * @param node_id a node identifier
+ * @return Number of child nodes which status are okay
+ */
+#define DT_CHILD_NUM_STATUS_OKAY(node_id) \
+	DT_CAT(node_id, _CHILD_NUM_STATUS_OKAY)
 
 /**
  * @brief Do @p node_id1 and @p node_id2 refer to the same node?
@@ -3441,6 +3462,29 @@
 	DT_CHILD(DT_DRV_INST(inst), child)
 
 /**
+ * @brief Get the number of child nodes of a given node
+ *
+ * This is equivalent to @see
+ * <tt>DT_CHILD_NUM(DT_DRV_INST(inst))</tt>.
+ *
+ * @param inst Devicetree instance number
+ * @return Number of child nodes
+ */
+#define DT_INST_CHILD_NUM(inst) DT_CHILD_NUM(DT_DRV_INST(inst))
+
+/**
+ * @brief Get the number of child nodes of a given node
+ *
+ * This is equivalent to @see
+ * <tt>DT_CHILD_NUM_STATUS_OKAY(DT_DRV_INST(inst))</tt>.
+ *
+ * @param inst Devicetree instance number
+ * @return Number of child nodes which status are okay
+ */
+#define DT_INST_CHILD_NUM_STATUS_OKAY(inst) \
+	DT_CHILD_NUM_STATUS_OKAY(DT_DRV_INST(inst))
+
+/**
  * @brief Call @p fn on all child nodes of DT_DRV_INST(inst).
  *
  * The macro @p fn should take one argument, which is the node
@@ -4190,7 +4234,7 @@
  * @endcode
  */
 #define DT_ANY_INST_HAS_PROP_STATUS_OKAY(prop) \
-	(DT_INST_FOREACH_STATUS_OKAY_VARGS(DT_INST_NODE_HAS_PROP_AND_OR, prop) 0)
+	COND_CODE_1(IS_EMPTY(DT_ANY_INST_HAS_PROP_STATUS_OKAY_(prop)), (0), (1))
 
 /**
  * @brief Call @p fn on all nodes with compatible `DT_DRV_COMPAT`
@@ -4356,6 +4400,15 @@
 	DT_NODE_HAS_PROP(DT_DRV_INST(inst), prop)
 
 /**
+ * @brief Does a DT_DRV_COMPAT instance have the compatible?
+ * @param inst instance number
+ * @param compat lowercase-and-underscores compatible, without quotes
+ * @return 1 if the instance matches the compatible, 0 otherwise.
+ */
+#define DT_INST_NODE_HAS_COMPAT(inst, compat) \
+	DT_NODE_HAS_COMPAT(DT_DRV_INST(inst), compat)
+
+/**
  * @brief Does a phandle array have a named cell specifier at an index
  *        for a `DT_DRV_COMPAT` instance?
  * @param inst instance number
@@ -4424,6 +4477,34 @@
  */
 
 /** @cond INTERNAL_HIDDEN */
+
+/** @brief Helper for DT_ANY_INST_HAS_PROP_STATUS_OKAY_
+ *
+ * This macro generates token "1," for instance of a device,
+ * identified by index @p idx, if instance has property @p prop.
+ *
+ * @param idx instance number
+ * @param prop property to check for
+ *
+ * @return Macro evaluates to `1,` if instance has the property,
+ * otherwise it evaluates to literal nothing.
+ */
+#define DT_ANY_INST_HAS_PROP_STATUS_OKAY__(idx, prop)	\
+	COND_CODE_1(DT_INST_NODE_HAS_PROP(idx, prop), (1,), ())
+/** @brief Helper for DT_ANY_INST_HAS_PROP_STATUS_OKAY
+ *
+ * This macro uses DT_ANY_INST_HAS_PROP_STATUS_OKAY_ with
+ * DT_INST_FOREACH_STATUS_OKAY_VARG to generate comma separated list of 1,
+ * where each 1 on the list represents instance that has a property
+ * @p prop; the list may be empty, and the upper bound on number of
+ * list elements is number of device instances.
+ *
+ * @param prop property to check
+ *
+ * @return Evaluates to list of 1s (e.g: 1,1,1,) or nothing.
+ */
+#define DT_ANY_INST_HAS_PROP_STATUS_OKAY_(prop)	\
+	DT_INST_FOREACH_STATUS_OKAY_VARGS(DT_ANY_INST_HAS_PROP_STATUS_OKAY__, prop)
 
 #define DT_PATH_INTERNAL(...) \
 	UTIL_CAT(DT_ROOT, MACRO_MAP_CAT(DT_S_PREFIX, __VA_ARGS__))

@@ -32,6 +32,9 @@
 #include <zephyr/sys/rb.h>
 #endif
 
+#define K_NUM_THREAD_PRIO (CONFIG_NUM_PREEMPT_PRIORITIES + CONFIG_NUM_COOP_PRIORITIES + 1)
+#define PRIQ_BITMAP_SIZE  (DIV_ROUND_UP(K_NUM_THREAD_PRIO, BITS_PER_LONG))
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -117,8 +120,8 @@ struct _priq_rb {
  * to represent their requirements.
  */
 struct _priq_mq {
-	sys_dlist_t queues[32];
-	unsigned int bitmask; /* bit 1<<i set if queues[i] is non-empty */
+	sys_dlist_t queues[K_NUM_THREAD_PRIO];
+	unsigned long bitmask[PRIQ_BITMAP_SIZE];
 };
 
 struct _ready_q {
@@ -237,8 +240,8 @@ struct z_kernel {
 #endif
 
 #if defined(CONFIG_SMP) && defined(CONFIG_SCHED_IPI_SUPPORTED)
-	/* Need to signal an IPI at the next scheduling point */
-	bool pending_ipi;
+	/* Identify CPUs to send IPIs to at the next scheduling point */
+	atomic_t pending_ipi;
 #endif
 };
 

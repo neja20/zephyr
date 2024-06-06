@@ -205,6 +205,12 @@ testing:
     power-efficient but slow CPU or simulation platform which can perform instruction accurate
     simulation but does it slowly.
 
+env:
+  A list of environment variables. Twister will check if all these environment variables are set,
+  and otherwise skip this platform. This allows the user to define a platform which should be
+  used, for example, only if some required software or hardware is present, and to signal that
+  presence to twister using these environment variables.
+
 Test Cases
 **********
 
@@ -492,9 +498,6 @@ harness_config: <harness configuration options>
 
     ordered: <True|False> (default False)
         Check the regular expression strings in orderly or randomly fashion
-
-    repeat: <integer>
-        Number of times to validate the repeated regex expression
 
     record: <recording options> (optional)
       regex: <regular expression> (required)
@@ -1079,6 +1082,10 @@ can be used multiple times and all given fixtures will be appended as a list. An
 given fixtures will be assigned to all boards, this means that all boards set by
 current twister command can run those testcases which request the same fixtures.
 
+Some fixtures allow for configuration strings to be appended, separated from the
+fixture name by a ``:``. Only the fixture name is matched against the fixtures
+requested by testcases.
+
 Notes
 +++++
 
@@ -1343,12 +1350,6 @@ To execute a Robot test suite with twister, run the following command:
       .. code-block:: bat
 
          python .\scripts\twister --platform hifive1 --test samples/subsys/shell/shell_module/sample.shell.shell_module.robot
-
-It's also possible to run it by `west` directly, with:
-
-.. code-block:: bash
-
-   $ ROBOT_FILES=shell_module.robot west build -p -b hifive1 -s samples/subsys/shell/shell_module -t run_renode_test
 
 Writing Robot tests
 ===================

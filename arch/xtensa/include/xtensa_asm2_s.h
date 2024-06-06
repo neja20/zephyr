@@ -7,10 +7,10 @@
 #ifndef ZEPHYR_ARCH_XTENSA_INCLUDE_XTENSA_ASM2_S_H
 #define ZEPHYR_ARCH_XTENSA_INCLUDE_XTENSA_ASM2_S_H
 
-#include <zsr.h>
+#include <zephyr/zsr.h>
 #include "xtensa_asm2_context.h"
 
-#include <offsets.h>
+#include <zephyr/offsets.h>
 
 /* Assembler header!  This file contains macros designed to be included
  * only by the assembler.
@@ -549,7 +549,12 @@ _do_call_\@:
 	rsr a6, ZSR_CPU
 	l32i a6, a6, ___cpu_t_current_OFFSET
 
+#ifdef CONFIG_XTENSA_MMU
 	call4 xtensa_swap_update_page_tables
+#endif
+#ifdef CONFIG_XTENSA_MPU
+	call4 xtensa_mpu_map_write
+#endif
 	l32i a1, a1, 0
 	l32i a0, a1, ___xtensa_irq_bsa_t_a0_OFFSET
 	addi a1, a1, ___xtensa_irq_bsa_t_SIZEOF

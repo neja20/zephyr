@@ -12,19 +12,25 @@
  *
  * @defgroup bt_cap Common Audio Profile (CAP)
  *
+ * @since 3.2
+ * @version 0.8.0
+ *
  * @ingroup bluetooth
  * @{
- *
- * [Experimental] Users should note that the APIs can change
- * as a part of ongoing development.
  */
 
+#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
-#include <zephyr/bluetooth/audio/csip.h>
-#include <zephyr/bluetooth/iso.h>
 #include <zephyr/bluetooth/audio/audio.h>
 #include <zephyr/bluetooth/audio/bap.h>
+#include <zephyr/bluetooth/audio/csip.h>
+#include <zephyr/bluetooth/addr.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/iso.h>
+#include <zephyr/net/buf.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,14 +69,16 @@ struct bt_cap_initiator_cb {
 	 * @param conn      The connection pointer supplied to
 	 *                  bt_cap_initiator_unicast_discover().
 	 * @param err       0 if Common Audio Service was found else -ENODATA.
+	 * @param member    Pointer to the set member. NULL if err != 0.
 	 * @param csis_inst The Coordinated Set Identification Service if
 	 *                  Common Audio Service was found and includes a
 	 *                  Coordinated Set Identification Service.
 	 *                  NULL on error or if remote device does not include
-	 *                  Coordinated Set Identification Service.
+	 *                  Coordinated Set Identification Service. NULL if err != 0.
 	 */
 	void (*unicast_discovery_complete)(
 		struct bt_conn *conn, int err,
+		const struct bt_csip_set_coordinator_set_member *member,
 		const struct bt_csip_set_coordinator_csis_inst *csis_inst);
 
 	/**
@@ -226,6 +234,9 @@ struct bt_cap_unicast_audio_start_stream_param {
 	 * The @p codec_cfg.meta shall include a list of CCIDs
 	 * (@ref BT_AUDIO_METADATA_TYPE_CCID_LIST) as well as a non-0
 	 * stream context (@ref BT_AUDIO_METADATA_TYPE_STREAM_CONTEXT) bitfield.
+	 *
+	 * This value is assigned to the @p stream, and shall remain valid while the stream is
+	 * non-idle.
 	 */
 	struct bt_audio_codec_cfg *codec_cfg;
 };
@@ -290,6 +301,16 @@ struct bt_cap_unicast_audio_stop_param {
  * @return 0 on success or negative error value on failure.
  */
 int bt_cap_initiator_register_cb(const struct bt_cap_initiator_cb *cb);
+
+/**
+ * @brief Unregister Common Audio Profile Initiator callbacks
+ *
+ * @param cb   The callback structure that was previously registered.
+ *
+ * @retval 0 Success
+ * @retval -EINVAL @p cb is NULL or @p cb was not registered
+ */
+int bt_cap_initiator_unregister_cb(const struct bt_cap_initiator_cb *cb);
 
 /**
  * @brief Setup and start unicast audio streams for a set of devices.
@@ -673,13 +694,15 @@ struct bt_cap_commander_cb {
 	 * @param conn      The connection pointer supplied to
 	 *                  bt_cap_initiator_unicast_discover().
 	 * @param err       0 if Common Audio Service was found else -ENODATA.
+	 * @param member    Pointer to the set member. NULL if err != 0.
 	 * @param csis_inst The Coordinated Set Identification Service if
 	 *                  Common Audio Service was found and includes a
 	 *                  Coordinated Set Identification Service.
 	 *                  NULL on error or if remote device does not include
-	 *                  Coordinated Set Identification Service.
+	 *                  Coordinated Set Identification Service. NULL if err != 0.
 	 */
 	void (*discovery_complete)(struct bt_conn *conn, int err,
+				   const struct bt_csip_set_coordinator_set_member *member,
 				   const struct bt_csip_set_coordinator_csis_inst *csis_inst);
 
 #if defined(CONFIG_BT_VCP_VOL_CTLR)
@@ -713,14 +736,54 @@ struct bt_cap_commander_cb {
 	 *
 	 * @param conn           Pointer to the connection where the error
 	 *                       occurred. NULL if @p err is 0 or if cancelled by
-	 *                       bt_cap_initiator_unicast_audio_cancel()
+	 *                       bt_cap_commander_cancel()
 	 * @param err            0 on success, BT_GATT_ERR() with a
 	 *                       specific ATT (BT_ATT_ERR_*) error code or -ECANCELED if cancelled
-	 *                       by bt_cap_initiator_unicast_audio_cancel().
+	 *                       by bt_cap_commander_cancel().
 	 */
 	void (*volume_offset_changed)(struct bt_conn *conn, int err);
 #endif /* CONFIG_BT_VCP_VOL_CTLR_VOCS */
 #endif /* CONFIG_BT_VCP_VOL_CTLR */
+#if defined(CONFIG_BT_MICP_MIC_CTLR)
+	/**
+	 * @brief Callback for bt_cap_commander_change_microphone_mute_state().
+	 *
+	 * @param conn           Pointer to the connection where the error
+	 *                       occurred. NULL if @p err is 0 or if cancelled by
+	 *                       bt_cap_commander_cancel()
+	 * @param err            0 on success, BT_GATT_ERR() with a
+	 *                       specific ATT (BT_ATT_ERR_*) error code or -ECANCELED if cancelled
+	 *                       by bt_cap_commander_cancel().
+	 */
+	void (*microphone_mute_changed)(struct bt_conn *conn, int err);
+#if defined(CONFIG_BT_MICP_MIC_CTLR_AICS)
+	/**
+	 * @brief Callback for bt_cap_commander_change_microphone_gain_setting().
+	 *
+	 * @param conn           Pointer to the connection where the error
+	 *                       occurred. NULL if @p err is 0 or if cancelled by
+	 *                       bt_cap_commander_cancel()
+	 * @param err            0 on success, BT_GATT_ERR() with a
+	 *                       specific ATT (BT_ATT_ERR_*) error code or -ECANCELED if cancelled
+	 *                       by bt_cap_commander_cancel().
+	 */
+	void (*microphone_gain_changed)(struct bt_conn *conn, int err);
+#endif /* CONFIG_BT_MICP_MIC_CTLR_AICS */
+#endif /* CONFIG_BT_MICP_MIC_CTLR */
+
+#if defined(CONFIG_BT_BAP_BROADCAST_ASSISTANT)
+	/**
+	 * @brief Callback for bt_cap_commander_broadcast_reception_start().
+	 *
+	 * @param conn		Pointer to the connection where the error
+	 *			occurred. NULL if @p err is 0 or if cancelled by
+	 *			bt_cap_commander_cancel()
+	 * @param err		0 on success, BT_GATT_ERR() with a
+	 *			specific ATT (BT_ATT_ERR_*) error code or -ECANCELED if cancelled
+	 *			by bt_cap_commander_cancel().
+	 */
+	void (*broadcast_reception_start)(struct bt_conn *conn, int err);
+#endif /* CONFIG_BT_BAP_BROADCAST_ASSISTANT */
 };
 
 /**
@@ -772,13 +835,13 @@ int bt_cap_commander_discover(struct bt_conn *conn);
  * It is recommended to do this if any existing procedure takes longer time than expected, which
  * could indicate a missing response from the Common Audio Profile Acceptor.
  *
- * This does not send any requests to any Common Audio Profile Acceptors involved with the current
- * procedure, and thus notifications from the Common Audio Profile Acceptors may arrive after this
- * has been called. It is thus recommended to either only use this if a procedure has stalled, or
- * wait a short while before starting any new Common Audio Profile procedure after this has been
- * called to avoid getting notifications from the cancelled procedure. The wait time depends on
- * the connection interval, the number of devices in the previous procedure and the behavior of the
- * Common Audio Profile Acceptors.
+ * This does not send any requests to any Common Audio Profile Acceptors involved with the
+ * current procedure, and thus notifications from the Common Audio Profile Acceptors may
+ * arrive after this has been called. It is thus recommended to either only use this if a
+ * procedure has stalled, or wait a short while before starting any new Common Audio Profile
+ * procedure after this has been called to avoid getting notifications from the cancelled
+ * procedure. The wait time depends on the connection interval, the number of devices in the
+ * previous procedure and the behavior of the Common Audio Profile Acceptors.
  *
  * The respective callbacks of the procedure will be called as part of this with the connection
  * pointer set to NULL and the err value set to -ECANCELED.
@@ -813,7 +876,7 @@ struct bt_cap_commander_broadcast_reception_start_member_param {
 	 *
 	 * At least one bit in one of the subgroups bis_sync parameters shall be set.
 	 */
-	struct bt_bap_bass_subgroup *subgroups;
+	struct bt_bap_bass_subgroup subgroups[CONFIG_BT_BAP_BASS_MAX_SUBGROUPS];
 
 	/** Number of subgroups */
 	size_t num_subgroups;

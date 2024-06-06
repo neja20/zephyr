@@ -24,6 +24,8 @@ extern "C" {
 /**
  * @brief ADC driver APIs
  * @defgroup adc_interface ADC driver APIs
+ * @since 1.0
+ * @version 1.0.0
  * @ingroup io_interfaces
  * @{
  */
@@ -982,6 +984,6 @@ static inline bool adc_is_ready_dt(const struct adc_dt_spec *spec)
 }
 #endif
 
-#include <syscalls/adc.h>
+#include <zephyr/syscalls/adc.h>
 
 #endif  /* ZEPHYR_INCLUDE_DRIVERS_ADC_H_ */

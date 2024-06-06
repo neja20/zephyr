@@ -62,6 +62,14 @@ struct bt_rfcomm_dlc_ops {
 	 *  @param buf Buffer containing incoming data.
 	 */
 	void (*recv)(struct bt_rfcomm_dlc *dlc, struct net_buf *buf);
+
+	/** DLC sent callback
+	 *
+	 *  @param dlc The dlc which has sent data.
+	 *  @param buf Buffer containing data has been sent.
+	 *  @param err Sent result.
+	 */
+	void (*sent)(struct bt_rfcomm_dlc *dlc, struct net_buf *buf, int err);
 };
 
 /** @brief Role of RFCOMM session and dlc. Used only by internal APIs
@@ -96,7 +104,9 @@ struct bt_rfcomm_dlc {
 
 	/* Stack & kernel data for TX thread */
 	struct k_thread            tx_thread;
-	K_KERNEL_STACK_MEMBER(stack, 256);
+#if defined(CONFIG_BT_RFCOMM_DLC_STACK_SIZE)
+	K_KERNEL_STACK_MEMBER(stack, CONFIG_BT_RFCOMM_DLC_STACK_SIZE);
+#endif /* CONFIG_BT_RFCOMM_DLC_STACK_SIZE */
 };
 
 struct bt_rfcomm_server {

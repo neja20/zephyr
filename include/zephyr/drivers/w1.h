@@ -26,6 +26,8 @@ extern "C" {
 /**
  * @brief 1-Wire Interface
  * @defgroup w1_interface 1-Wire Interface
+ * @since 3.2
+ * @version 0.1.0
  * @ingroup io_interfaces
  * @{
  */
@@ -718,6 +720,6 @@ static inline uint16_t w1_crc16(const uint16_t seed, const uint8_t *src,
 /**
  * @}
  */
-#include <syscalls/w1.h>
+#include <zephyr/syscalls/w1.h>
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_W1_H_ */

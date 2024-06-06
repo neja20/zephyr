@@ -18,10 +18,12 @@ from contextlib import nullcontext
 from importlib import reload
 from serial import SerialException
 from subprocess import CalledProcessError, TimeoutExpired
+from types import SimpleNamespace
 
 import twisterlib.harness
 
-from conftest import ZEPHYR_BASE
+ZEPHYR_BASE = os.getenv("ZEPHYR_BASE")
+
 from twisterlib.error import TwisterException
 from twisterlib.handlers import (
     Handler,
@@ -129,6 +131,7 @@ def test_handler_final_handle_actions(mocked_instance):
     harness.detected_suite_names = mock.Mock()
     harness.matched_run_id = False
     harness.run_id_exists = True
+    harness.recording = mock.Mock()
 
     handler_time = mock.Mock()
 
@@ -142,6 +145,8 @@ def test_handler_final_handle_actions(mocked_instance):
 
     handler.instance.reason = 'This reason shan\'t be changed.'
     handler._final_handle_actions(harness, handler_time)
+
+    instance.assert_has_calls([mock.call.record(harness.recording)])
 
     assert handler.instance.reason == 'This reason shan\'t be changed.'
 
@@ -202,42 +207,6 @@ def test_handler_missing_suite_name(mocked_instance):
     assert all(
         testcase.status == 'failed' for testcase in handler.instance.testcases
     )
-
-
-def test_handler_record(mocked_instance):
-    instance = mocked_instance
-    instance.testcases = [mock.Mock()]
-
-    handler = Handler(instance)
-
-    harness = twisterlib.harness.Harness()
-    harness.recording = [ {'field_1':  'recording_1_1', 'field_2': 'recording_1_2'},
-                          {'field_1':  'recording_2_1', 'field_2': 'recording_2_2'}
-                        ]
-
-    with mock.patch(
-        'builtins.open',
-        mock.mock_open(read_data='')
-    ) as mock_file, \
-        mock.patch(
-        'csv.DictWriter.writerow',
-        mock.Mock()
-    ) as mock_writeheader, \
-        mock.patch(
-        'csv.DictWriter.writerows',
-        mock.Mock()
-    ) as mock_writerows:
-        handler.record(harness)
-
-    print(mock_file.mock_calls)
-
-    mock_file.assert_called_with(
-        os.path.join(instance.build_dir, 'recording.csv'),
-        'at'
-    )
-
-    mock_writeheader.assert_has_calls([mock.call({ k:k for k in harness.recording[0].keys()})])
-    mock_writerows.assert_has_calls([mock.call(harness.recording)])
 
 
 def test_handler_terminate(mocked_instance):
@@ -442,28 +411,25 @@ def test_binaryhandler_output_handler(
 
 
 TESTDATA_4 = [
-    (True, False, False, True, None, None,
+    (True, False, True, None, None,
      ['valgrind', '--error-exitcode=2', '--leak-check=full',
       f'--suppressions={ZEPHYR_BASE}/scripts/valgrind.supp',
       '--log-file=build_dir/valgrind.log', '--track-origins=yes',
-      'generator', 'run_renode_test']),
-    (False, True, False, False, 123, None, ['generator', 'run', '--seed=123']),
-    (False, False, True, False, None, None,
-     ['west', 'flash', '--skip-rebuild', '-d', 'build_dir']),
-    (False, False, False, False, None, ['ex1', 'ex2'], ['bin', 'ex1', 'ex2']),
+      'generator']),
+    (False, True, False, 123, None, ['generator', 'run', '--seed=123']),
+    (False, False, False, None, ['ex1', 'ex2'], ['build_dir/zephyr/zephyr.exe', 'ex1', 'ex2']),
 ]
 
 @pytest.mark.parametrize(
-    'robot_test, call_make_run, call_west_flash, enable_valgrind, seed,' \
+    'robot_test, call_make_run, enable_valgrind, seed,' \
     ' extra_args, expected',
     TESTDATA_4,
-    ids=['robot, valgrind', 'make run, seed', 'west flash', 'binary, extra']
+    ids=['robot, valgrind', 'make run, seed', 'binary, extra']
 )
 def test_binaryhandler_create_command(
     mocked_instance,
     robot_test,
     call_make_run,
-    call_west_flash,
     enable_valgrind,
     seed,
     extra_args,
@@ -473,11 +439,16 @@ def test_binaryhandler_create_command(
     handler.generator_cmd = 'generator'
     handler.binary = 'bin'
     handler.call_make_run = call_make_run
-    handler.call_west_flash = call_west_flash
-    handler.options = mock.Mock(enable_valgrind=enable_valgrind)
+    handler.options = SimpleNamespace()
+    handler.options.enable_valgrind = enable_valgrind
+    handler.options.coverage_basedir = "coverage_basedir"
     handler.seed = seed
     handler.extra_test_args = extra_args
     handler.build_dir = 'build_dir'
+    handler.instance.testsuite.sysbuild = False
+    handler.platform = SimpleNamespace()
+    handler.platform.resc = "file.resc"
+    handler.platform.uart = "uart"
 
     command = handler._create_command(robot_test)
 
@@ -1125,13 +1096,13 @@ TESTDATA_14 = [
     ids=['success', 'failed', 'error', 'flash error', 'no status']
 )
 def test_devicehandler_update_instance_info(
-    mocked_instance,
-    harness_state,
-    flash_error,
-    expected_status,
-    expected_reason,
-    do_add_missing
-):
+        mocked_instance,
+        harness_state,
+        flash_error,
+        expected_status,
+        expected_reason,
+        do_add_missing
+        ):
     handler = DeviceHandler(mocked_instance, 'build')
     handler_time = 59
     missing_mock = mock.Mock()
@@ -1145,7 +1116,7 @@ def test_devicehandler_update_instance_info(
     assert handler.instance.reason == expected_reason
 
     if do_add_missing:
-        missing_mock.assert_called_once_with('blocked', expected_reason)
+        missing_mock.assert_called_with('blocked', expected_reason)
 
 
 TESTDATA_15 = [
@@ -1198,6 +1169,7 @@ def test_devicehandler_create_serial_connection(
     available_mock = mock.Mock()
     handler.make_device_available = available_mock
     handler.options = mock.Mock(timeout_multiplier=1)
+    twisterlib.handlers.terminate_process = mock.Mock()
 
     hardware_baud = 14400
     flash_timeout = 60
@@ -1220,7 +1192,7 @@ def test_devicehandler_create_serial_connection(
         missing_mock.assert_called_once_with('blocked', 'Serial Device Error')
 
     if terminate_ser_pty_process:
-        ser_pty_process.terminate.assert_called_once()
+        twisterlib.handlers.terminate_process.assert_called_once()
         ser_pty_process.communicate.assert_called_once()
 
     if make_available:
@@ -1281,7 +1253,8 @@ TESTDATA_17 = [
     (True, False, False, False, 0, True, False,
      None, None, ['Timed out while monitoring serial output on IPName']),
     (True, False, False, False, 0, False, True,
-     None, None, ['Process Serial PTY terminated outs:  errs ']),
+     None, None, ["Terminating serial-pty:'Serial PTY'",
+                  "Terminated serial-pty:'Serial PTY', stdout:'', stderr:''"]),
 ]
 
 @pytest.mark.parametrize(
@@ -1380,6 +1353,7 @@ def test_devicehandler_handle(
     handler._update_instance_info = mock.Mock()
     handler._final_handle_actions = mock.Mock()
     handler.make_device_available = mock.Mock()
+    twisterlib.handlers.terminate_process = mock.Mock()
     handler.instance.platform.name = 'IPName'
 
     harness = mock.Mock()
@@ -1482,7 +1456,7 @@ TESTDATA_19 = [
     TESTDATA_19,
     ids=['domains build dir', 'self build dir']
 )
-def test_qemuhandler_get_sysbuild_build_dir(
+def test_qemuhandler_get_default_domain_build_dir(
     mocked_instance,
     self_sysbuild,
     self_build_dir,
@@ -1499,7 +1473,7 @@ def test_qemuhandler_get_sysbuild_build_dir(
     handler.build_dir = self_build_dir
 
     with mock.patch('domains.Domains.from_file', from_file_mock):
-        result = handler._get_sysbuild_build_dir()
+        result = handler.get_default_domain_build_dir()
 
     assert result == expected
 
@@ -1893,7 +1867,6 @@ def test_qemuhandler_thread(
 
     type(mocked_instance.testsuite).timeout = mock.PropertyMock(return_value=timeout)
     handler = QEMUHandler(mocked_instance, 'build')
-    handler.results = {}
     handler.ignore_unexpected_eof = False
     handler.pid_fn = 'pid_fn'
     handler.fifo_fn = 'fifo_fn'
@@ -1953,7 +1926,6 @@ def test_qemuhandler_thread(
             handler.log,
             handler.fifo_fn,
             handler.pid_fn,
-            handler.results,
             harness,
             handler.ignore_unexpected_eof
         )
@@ -2023,7 +1995,7 @@ def test_qemuhandler_handle(
     harness = mock.Mock(state=harness_state)
     handler_options_west_flash = []
 
-    sysbuild_build_dir = os.path.join('sysbuild', 'dummydir')
+    domain_build_dir = os.path.join('sysbuild', 'dummydir')
     command = ['generator_cmd', '-C', os.path.join('cmd', 'path'), 'run']
 
     handler.options = mock.Mock(
@@ -2036,7 +2008,7 @@ def test_qemuhandler_handle(
     handler._final_handle_actions = mock.Mock(return_value=None)
     handler._create_command = mock.Mock(return_value=command)
     handler._set_qemu_filenames = mock.Mock(side_effect=mock_filenames)
-    handler._get_sysbuild_build_dir = mock.Mock(return_value=sysbuild_build_dir)
+    handler.get_default_domain_build_dir = mock.Mock(return_value=domain_build_dir)
     handler.terminate = mock.Mock()
 
     unlink_mock = mock.Mock()

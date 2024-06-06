@@ -407,7 +407,7 @@ static uint32_t dhcpv4_update_message_timeout(struct net_if_dhcpv4 *dhcpv4)
 	}
 
 	/* +1/-1 second randomization */
-	timeout += (sys_rand32_get() % 3U) - 1;
+	timeout += (sys_rand8_get() % 3U) - 1;
 
 	dhcpv4->attempts++;
 	dhcpv4_set_timeout(dhcpv4, timeout);
@@ -1406,7 +1406,7 @@ static void dhcpv4_iface_event_handler(struct net_mgmt_event_callback *cb,
 
 		if (iface->config.dhcpv4.state == NET_DHCPV4_BOUND) {
 			iface->config.dhcpv4.attempts = 0U;
-			iface->config.dhcpv4.state = NET_DHCPV4_RENEWING;
+			iface->config.dhcpv4.state = NET_DHCPV4_INIT;
 			NET_DBG("enter state=%s", net_dhcpv4_state_name(
 					iface->config.dhcpv4.state));
 			/* Remove any bound address as interface is gone */

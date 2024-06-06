@@ -183,6 +183,8 @@ hardware features:
 +-----------+------------+-------------------------------------+
 | RTC       | on-chip    | Real Time Clock                     |
 +-----------+------------+-------------------------------------+
+| I2C       | on-chip    | i2c bus                             |
++-----------+------------+-------------------------------------+
 | SPI       | on-chip    | spi bus                             |
 +-----------+------------+-------------------------------------+
 | OCTOSPI   | on-chip    | octospi                             |
@@ -191,8 +193,13 @@ hardware features:
 +-----------+------------+-------------------------------------+
 | AES       | on-chip    | crypto                              |
 +-----------+------------+-------------------------------------+
+| SDMMC     | on-chip    | disk access                         |
++-----------+------------+-------------------------------------+
 | USB       | on-chip    | USB full-speed host/device bus      |
 +-----------+------------+-------------------------------------+
+| RTC       | on-chip    | rtc                                 |
++-----------+------------+-------------------------------------+
+
 
 Other hardware features are not yet supported on this Zephyr port.
 
@@ -202,20 +209,6 @@ The default configuration can be found in the defconfig and dts files:
 
   - :zephyr_file:`boards/st/stm32h573i_dk/stm32h573i_dk_defconfig`
   - :zephyr_file:`boards/st/stm32h573i_dk/stm32h573i_dk.dts`
-
-Zephyr board options
-====================
-
-The STM32H573 is an SoC with Cortex-M33 architecture. Zephyr provides support
-for building for Secure firmware.
-
-The BOARD options are summarized below:
-
-+----------------------+-----------------------------------------------+
-|   BOARD              | Description                                   |
-+======================+===============================================+
-| stm32h573i_dk        | For building Secure firmware                  |
-+----------------------+-----------------------------------------------+
 
 Connections and IOs
 ===================

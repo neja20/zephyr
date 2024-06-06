@@ -115,7 +115,9 @@ already supported, which can also be re-used on this mimxrt1060_evk board:
 +-----------+------------+-------------------------------------+
 | SYSTICK   | on-chip    | systick                             |
 +-----------+------------+-------------------------------------+
-| DISPLAY   | on-chip    | display                             |
+| DISPLAY   | on-chip    | eLCDIF. Tested with                 |
+|           |            | :ref:`rk043fn02h_ct`, and           |
+|           |            | :ref:`rk043fn66hs_ctg` shields      |
 +-----------+------------+-------------------------------------+
 | FLASH     | on-chip    | QSPI flash                          |
 +-----------+------------+-------------------------------------+
@@ -153,8 +155,8 @@ already supported, which can also be re-used on this mimxrt1060_evk board:
 | PIT       | on-chip    | pit                                 |
 +-----------+------------+-------------------------------------+
 
-The default configuration can be found in the defconfig file:
-``boards/arm/mimxrt1060_evk/mimxrt1060_evk_defconfig``
+The default configuration can be found in
+:zephyr_file:`boards/nxp/mimxrt1060_evk/mimxrt1060_evk_defconfig`
 
 Other hardware features are not currently supported by the port.
 
@@ -474,13 +476,3 @@ connected to the EVK properly. See :ref:`Using J-Link RT1060` for more details.
 
 .. _Using J-Link with MIMXRT1060-EVKB:
    https://community.nxp.com/t5/i-MX-RT-Knowledge-Base/Using-J-Link-with-MIMXRT1060-EVKB/ta-p/1452717
-
-Experimental ENET Driver
-========================
-
-Current default ethernet driver is eth_mcux, with binding `nxp,kinetis-ethernet`. There is a new
-driver with binding `nxp,enet`, which is experimental and undergoing development, but will have
-enhanced capability, such as not hardcoding code for only one phy in the driver like eth_mcux.
-
-To build for this EVK with the new driver, include the experimental overlay to west build with
-the option `-DEXTRA_DTC_OVERLAY_FILE=nxp,enet-experimental.overlay`.

@@ -128,6 +128,11 @@
 		};
 	};
 
+	pinmux_user: pinmux_user {
+		group0 {
+			pinmux = <&iomuxc_gpio_emc_b1_24_gpio_mux1_io24>;
+		};
+	};
 
 	pinmux_flexspi1: pinmux_flexspi1 {
 		group0 {
@@ -146,6 +151,14 @@
 	pinmux_gpt_ppm: pinmux_gpt_ppm {
 		group0 {
 			pinmux = <&iomuxc_gpio_emc_b1_09_gpt5_capture1>;
+			drive-strength = "high";
+			slew-rate = "fast";
+		};
+	};
+
+	pinmux_qtmr_pwm_buzzer: pinmux_qtmr_pwm_buzzer {
+		group0 {
+			pinmux = <&iomuxc_gpio_emc_b2_09_qtimer1_timer0>;
 			drive-strength = "high";
 			slew-rate = "fast";
 		};
@@ -339,17 +352,10 @@
 				<&iomuxc_gpio_sd_b1_02_usdhc1_data0>,
 				<&iomuxc_gpio_sd_b1_03_usdhc1_data1>,
 				<&iomuxc_gpio_sd_b1_04_usdhc1_data2>,
-				<&iomuxc_gpio_sd_b1_05_usdhc1_data3>;
+				<&iomuxc_gpio_sd_b1_05_usdhc1_data3>,
+				<&iomuxc_gpio_sd_b1_01_usdhc1_clk>;
 			bias-pull-up;
-			drive-strength = "high";
-			slew-rate = "fast";
 			input-enable;
-		};
-		group1 {
-			pinmux = <&iomuxc_gpio_sd_b1_01_usdhc1_clk>,
-				<&iomuxc_gpio_ad_32_usdhc1_cd_b>;
-			drive-strength = "high";
-			slew-rate = "fast";
 		};
 	};
 

@@ -138,8 +138,6 @@ static int can_native_linux_send(const struct device *dev, const struct can_fram
 		(frame->flags & CAN_FRAME_IDE) != 0 ? "extended" : "standard",
 		(frame->flags & CAN_FRAME_RTR) != 0 ? ", RTR frame" : "");
 
-	__ASSERT_NO_MSG(callback != NULL);
-
 #ifdef CONFIG_CAN_FD_MODE
 	if ((frame->flags & ~(CAN_FRAME_IDE | CAN_FRAME_RTR |
 		CAN_FRAME_FDF | CAN_FRAME_BRS)) != 0) {
@@ -471,7 +469,7 @@ static int can_native_linux_init(const struct device *dev)
 #define CAN_NATIVE_LINUX_INIT(inst)						\
 										\
 static const struct can_native_linux_config can_native_linux_cfg_##inst = {	\
-	.common = CAN_DT_DRIVER_CONFIG_INST_GET(inst, 0),			\
+	.common = CAN_DT_DRIVER_CONFIG_INST_GET(inst, 0, 0),			\
 	.if_name = DT_INST_PROP(inst, host_interface),				\
 };										\
 										\

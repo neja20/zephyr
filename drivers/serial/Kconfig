@@ -218,6 +218,8 @@ source "drivers/serial/Kconfig.litex"
 
 source "drivers/serial/Kconfig.rtt"
 
+source "drivers/serial/Kconfig.bt"
+
 source "drivers/serial/Kconfig.xlnx"
 
 source "drivers/serial/Kconfig.xmc4xxx"
@@ -264,11 +266,15 @@ source "drivers/serial/Kconfig.efinix_sapphire"
 
 source "drivers/serial/Kconfig.sedi"
 
+source "drivers/serial/Kconfig.max32"
+
 source "drivers/serial/Kconfig.bcm2711"
 
 source "drivers/serial/Kconfig.intel_lw"
 
 source "drivers/serial/Kconfig.renesas_ra"
+
+source "drivers/serial/Kconfig.ene"
 
 source "drivers/serial/Kconfig.rzt2m"
 

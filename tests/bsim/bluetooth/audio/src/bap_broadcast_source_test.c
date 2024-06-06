@@ -3,15 +3,31 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
 
-#if defined(CONFIG_BT_BAP_BROADCAST_SOURCE)
-
-#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/autoconf.h>
 #include <zephyr/bluetooth/audio/audio.h>
 #include <zephyr/bluetooth/audio/bap.h>
 #include <zephyr/bluetooth/audio/bap_lc3_preset.h>
+#include <zephyr/bluetooth/audio/lc3.h>
+#include <zephyr/bluetooth/bluetooth.h>
+#include <zephyr/bluetooth/byteorder.h>
+#include <zephyr/bluetooth/gap.h>
+#include <zephyr/bluetooth/iso.h>
+#include <zephyr/bluetooth/uuid.h>
+#include <zephyr/kernel.h>
+#include <zephyr/net/buf.h>
+#include <zephyr/sys/printk.h>
+#include <zephyr/sys/util.h>
+#include <zephyr/toolchain.h>
+
+#include "bstests.h"
 #include "common.h"
 
+#if defined(CONFIG_BT_BAP_BROADCAST_SOURCE)
 /* When BROADCAST_ENQUEUE_COUNT > 1 we can enqueue enough buffers to ensure that
  * the controller is never idle
  */
@@ -214,14 +230,14 @@ static int setup_extended_adv(struct bt_bap_broadcast_source *source, struct bt_
 	NET_BUF_SIMPLE_DEFINE(ad_buf,
 			      BT_UUID_SIZE_16 + BT_AUDIO_BROADCAST_ID_SIZE);
 	struct bt_le_adv_param adv_param = BT_LE_ADV_PARAM_INIT(
-		BT_LE_ADV_OPT_EXT_ADV | BT_LE_ADV_OPT_USE_NAME, 0x80, 0x80, NULL);
+		BT_LE_ADV_OPT_EXT_ADV, 0x80, 0x80, NULL);
 	NET_BUF_SIMPLE_DEFINE(base_buf, 128);
 	struct bt_data ext_ad;
 	struct bt_data per_ad;
 	uint32_t broadcast_id;
 	int err;
 
-	/* Create a non-connectable non-scannable advertising set */
+	/* Create a non-connectable advertising set */
 	err = bt_le_ext_adv_create(&adv_param, NULL, adv);
 	if (err != 0) {
 		printk("Unable to create extended advertising set: %d\n", err);
@@ -518,7 +534,7 @@ static void test_main(void)
 static const struct bst_test_instance test_broadcast_source[] = {
 	{
 		.test_id = "broadcast_source",
-		.test_post_init_f = test_init,
+		.test_pre_init_f = test_init,
 		.test_tick_f = test_tick,
 		.test_main_f = test_main
 	},

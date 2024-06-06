@@ -464,8 +464,6 @@ static int can_nxp_s32_add_rx_filter(const struct device *dev,
 	int mb_indx;
 	uint32_t mask;
 
-	__ASSERT_NO_MSG(callback != NULL);
-
 	if ((filter->flags & ~(CAN_FILTER_IDE)) != 0) {
 		LOG_ERR("unsupported CAN filter flags 0x%02x", filter->flags);
 		return -ENOTSUP;
@@ -554,8 +552,6 @@ static int can_nxp_s32_send(const struct device *dev,
 	Canexcel_Ip_StatusType status;
 	enum can_state state;
 	int alloc, mb_indx;
-
-	__ASSERT_NO_MSG(callback != NULL);
 
 #ifdef CAN_NXP_S32_FD_MODE
 	if ((frame->flags & ~(CAN_FRAME_IDE | CAN_FRAME_FDF | CAN_FRAME_BRS)) != 0) {
@@ -935,7 +931,7 @@ static int can_nxp_s32_init(const struct device *dev)
 	IP_MC_RGM->PRST_0[0].PRST_0 &=
 		~(MC_RGM_PRST_0_PERIPH_16_RST_MASK | MC_RGM_PRST_0_PERIPH_24_RST_MASK);
 
-	err = can_calc_timing(dev, &data->timing, config->common.bus_speed,
+	err = can_calc_timing(dev, &data->timing, config->common.bitrate,
 			      config->common.sample_point);
 	if (err == -EINVAL) {
 		LOG_ERR("Can't find timing for given param");
@@ -946,11 +942,11 @@ static int can_nxp_s32_init(const struct device *dev)
 		LOG_WRN("Sample-point error : %d", err);
 	}
 
-	LOG_DBG("Setting CAN bitrate %d:", config->common.bus_speed);
+	LOG_DBG("Setting CAN bitrate %d:", config->common.bitrate);
 	nxp_s32_zcan_timing_to_canxl_timing(&data->timing, &config->can_cfg->bitrate);
 
 #ifdef CAN_NXP_S32_FD_MODE
-	err = can_calc_timing_data(dev, &data->timing_data, config->common.bus_speed_data,
+	err = can_calc_timing_data(dev, &data->timing_data, config->common.bitrate_data,
 				   config->common.sample_point_data);
 	if (err == -EINVAL) {
 		LOG_ERR("Can't find timing data for given param");
@@ -961,7 +957,7 @@ static int can_nxp_s32_init(const struct device *dev)
 		LOG_WRN("Sample-point-data err : %d", err);
 	}
 
-	LOG_DBG("Setting CAN FD bitrate %d:", config->common.bus_speed_data);
+	LOG_DBG("Setting CAN FD bitrate %d:", config->common.bitrate_data);
 	nxp_s32_zcan_timing_to_canxl_timing(&data->timing_data, &config->can_cfg->Fd_bitrate);
 #endif
 
@@ -1151,7 +1147,7 @@ static const struct can_driver_api can_nxp_s32_driver_api = {
 				(Canexcel_Ip_RxFifoFilterID_ADDR *)&rx_fifo_filter##n,))\
 	};										\
 	static struct can_nxp_s32_config can_nxp_s32_config_##n = {			\
-		.common = CAN_DT_DRIVER_CONFIG_INST_GET(n, CAN_NXP_S32_MAX_BITRATE),	\
+		.common = CAN_DT_DRIVER_CONFIG_INST_GET(n, 0, CAN_NXP_S32_MAX_BITRATE),	\
 		.base_sic = (CANXL_SIC_Type *)DT_INST_REG_ADDR_BY_NAME(n, sic),		\
 		IF_ENABLED(CONFIG_CAN_NXP_S32_RX_FIFO,					\
 			(.base_rx_fifo = (CANXL_RXFIFO_Type *)				\

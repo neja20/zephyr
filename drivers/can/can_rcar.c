@@ -888,9 +888,6 @@ static int can_rcar_send(const struct device *dev, const struct can_frame *frame
 		"extended" : "standard"
 		, (frame->flags & CAN_FRAME_RTR) != 0 ? "yes" : "no");
 
-	__ASSERT_NO_MSG(callback != NULL);
-	__ASSERT(frame->dlc == 0U || frame->data != NULL, "Dataptr is null");
-
 	if (frame->dlc > CAN_MAX_DLC) {
 		LOG_ERR("DLC of %d exceeds maximum (%d)",
 			frame->dlc, CAN_MAX_DLC);
@@ -1078,7 +1075,7 @@ static int can_rcar_init(const struct device *dev)
 		return ret;
 	}
 
-	ret = can_calc_timing(dev, &timing, config->common.bus_speed,
+	ret = can_calc_timing(dev, &timing, config->common.bitrate,
 			      config->common.sample_point);
 	if (ret == -EINVAL) {
 		LOG_ERR("Can't find timing for given param");
@@ -1190,7 +1187,7 @@ static const struct can_driver_api can_rcar_driver_api = {
 	PINCTRL_DT_INST_DEFINE(n);						\
 	static void can_rcar_##n##_init(const struct device *dev);		\
 	static const struct can_rcar_cfg can_rcar_cfg_##n = {			\
-		.common = CAN_DT_DRIVER_CONFIG_INST_GET(n, 1000000),		\
+		.common = CAN_DT_DRIVER_CONFIG_INST_GET(n, 0, 1000000),		\
 		.reg_addr = DT_INST_REG_ADDR(n),				\
 		.reg_size = DT_INST_REG_SIZE(n),				\
 		.init_func = can_rcar_##n##_init,				\

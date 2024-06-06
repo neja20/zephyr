@@ -15,6 +15,8 @@
 /**
  * @brief GNSS Interface
  * @defgroup gnss_interface GNSS Interface
+ * @since 3.6
+ * @version 0.1.0
  * @ingroup io_interfaces
  * @{
  */
@@ -154,7 +156,7 @@ struct gnss_info {
 	/** Number of satellites being tracked */
 	uint16_t satellites_cnt;
 	/** Horizontal dilution of precision in 1/1000 */
-	uint16_t hdop;
+	uint32_t hdop;
 	/** The fix status */
 	enum gnss_fix_status fix_status;
 	/** The fix quality */
@@ -491,6 +493,6 @@ static inline int z_impl_gnss_get_supported_systems(const struct device *dev,
 }
 #endif
 
-#include <syscalls/gnss.h>
+#include <zephyr/syscalls/gnss.h>
 
 #endif /* ZEPHYR_INCLUDE_DRIVERS_GNSS_H_ */

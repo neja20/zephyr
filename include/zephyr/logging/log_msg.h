@@ -72,7 +72,7 @@ struct log_msg_hdr {
 /* Attempting to keep best alignment. When address is 64 bit and timestamp 32
  * swap the order to have 16 byte header instead of 24 byte.
  */
-#if (INTPTR_MAX > INT32_MAX) && !CONFIG_LOG_TIMESTAMP_64BIT
+#if (INTPTR_MAX > INT32_MAX) && !defined(CONFIG_LOG_TIMESTAMP_64BIT)
 	log_timestamp_t timestamp;
 	const void *source;
 #else
@@ -652,7 +652,7 @@ __syscall void z_log_msg_simple_create_2(const void *source, uint32_t level,
  *
  * @param package Package.
  *
- * @oaram data Data.
+ * @param data Data.
  */
 __syscall void z_log_msg_static_create(const void *source,
 					const struct log_msg_desc desc,
@@ -788,6 +788,14 @@ static inline const void *log_msg_get_source(struct log_msg *msg)
 	return msg->hdr.source;
 }
 
+/** @brief Get log message source ID.
+ *
+ * @param msg Log message.
+ *
+ * @return Source ID, or -1 if not available.
+ */
+int16_t log_msg_get_source_id(struct log_msg *msg);
+
 /** @brief Get timestamp.
  *
  * @param msg Log message.
@@ -849,7 +857,7 @@ static inline uint8_t *log_msg_get_package(struct log_msg *msg, size_t *len)
  * @}
  */
 
-#include <syscalls/log_msg.h>
+#include <zephyr/syscalls/log_msg.h>
 
 #ifdef __cplusplus
 }
